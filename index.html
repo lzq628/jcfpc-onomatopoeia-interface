@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>日中小説オノマトペ対訳コーパス</title>
+    <meta
+      name="description"
+      content="200語の日本語オノマトペ候補を対象にした日中小説対訳KWICコーパス"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Japanese-Chinese Parallel Corpus</p>
+          <h1>日中小説オノマトペ対訳コーパス</h1>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-button" id="themeButton" type="button" title="表示テーマを切り替え">
+            ◐
+          </button>
+        </div>
+      </header>
+
+      <main class="layout">
+        <aside class="sidebar" aria-label="候補語フィルター">
+          <section class="control-block">
+            <span class="label">検索対象</span>
+            <div class="mode-toggle" role="group" aria-label="検索対象">
+              <button class="mode-button is-active" data-mode="word" type="button">候補語</button>
+              <button class="mode-button" data-mode="keitai" type="button">形態</button>
+            </div>
+          </section>
+
+          <section class="control-block">
+            <label class="label" id="searchLabel" for="candidateSearch">候補語検索</label>
+            <input
+              id="candidateSearch"
+              class="search-input"
+              type="search"
+              autocomplete="off"
+              placeholder="例: どきどき / しっかり"
+            />
+          </section>
+
+          <section class="control-grid">
+            <button class="small-button" id="selectAllButton" type="button">表示項目を選択</button>
+            <button class="small-button" id="clearButton" type="button">解除</button>
+          </section>
+
+          <section class="control-block">
+            <label class="label" for="bookFilterButton">作品</label>
+            <div class="multi-select" id="bookMultiSelect">
+              <button
+                class="select multi-select-button"
+                id="bookFilterButton"
+                type="button"
+                aria-expanded="false"
+                aria-controls="bookFilterMenu"
+              >
+                <span id="bookFilterLabel">すべて</span>
+                <span aria-hidden="true">⌄</span>
+              </button>
+              <div class="multi-select-menu" id="bookFilterMenu" hidden>
+                <div class="book-menu-actions">
+                  <button class="small-button" id="bookSelectAllButton" type="button">全作品</button>
+                  <button class="small-button" id="bookClearButton" type="button">解除</button>
+                </div>
+                <div id="bookFilterList" class="book-filter-list"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="control-block candidate-block">
+            <div class="label-row">
+              <span class="label" id="listLabel">候補語</span>
+              <span id="candidateCount" class="muted"></span>
+            </div>
+            <div id="candidateList" class="candidate-list"></div>
+          </section>
+        </aside>
+
+        <section class="content">
+          <section class="stats-grid" aria-label="概要統計">
+            <article class="stat">
+              <span class="stat-label">候補語</span>
+              <strong id="statCandidates">0</strong>
+            </article>
+            <article class="stat">
+              <span class="stat-label">選択語</span>
+              <strong id="statSelected">0</strong>
+            </article>
+            <article class="stat">
+              <span class="stat-label">表示例</span>
+              <strong id="statResults">0</strong>
+            </article>
+            <article class="stat">
+              <span class="stat-label">作品数</span>
+              <strong id="statBooks">0</strong>
+            </article>
+          </section>
+
+          <section class="toolbar">
+            <label class="sort-label">
+              並び順
+              <select id="sortMode" class="select select-compact">
+                <option value="candidate">候補語順</option>
+                <option value="book">作品順</option>
+              </select>
+            </label>
+          </section>
+
+          <section id="selectionSummary" class="selection-summary"></section>
+
+          <section class="results-head">
+            <div>
+              <h2>検索結果</h2>
+              <p id="resultMeta" class="muted"></p>
+            </div>
+            <div class="pager">
+              <button class="icon-button" id="prevPage" type="button" title="前へ">‹</button>
+              <span id="pageInfo"></span>
+              <button class="icon-button" id="nextPage" type="button" title="次へ">›</button>
+            </div>
+          </section>
+
+          <section id="resultList" class="result-list" aria-live="polite"></section>
+        </section>
+      </main>
+    </div>
+
+    <script src="data/onomatopoeia_data.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
