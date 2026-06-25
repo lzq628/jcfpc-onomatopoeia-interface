@@ -5,8 +5,10 @@ const state = {
   query: "",
   selected: new Set(),
   selectedKeitai: new Set(),
+  selectedUsage: new Set(),
   books: new Set(),
   sort: "candidate",
+  view: "parallel",
   page: 1,
   pageSize: 24,
 };
@@ -27,10 +29,18 @@ const els = {
   bookFilterList: document.querySelector("#bookFilterList"),
   bookSelectAllButton: document.querySelector("#bookSelectAllButton"),
   bookClearButton: document.querySelector("#bookClearButton"),
-  statCandidates: document.querySelector("#statCandidates"),
-  statSelected: document.querySelector("#statSelected"),
+  usageMultiSelect: document.querySelector("#usageMultiSelect"),
+  usageFilterButton: document.querySelector("#usageFilterButton"),
+  usageFilterLabel: document.querySelector("#usageFilterLabel"),
+  usageFilterMenu: document.querySelector("#usageFilterMenu"),
+  usageFilterList: document.querySelector("#usageFilterList"),
+  usageSelectAllButton: document.querySelector("#usageSelectAllButton"),
+  usageClearButton: document.querySelector("#usageClearButton"),
+  statTargetItems: document.querySelector("#statTargetItems"),
   statResults: document.querySelector("#statResults"),
   statBooks: document.querySelector("#statBooks"),
+  statKeitai: document.querySelector("#statKeitai"),
+  resultsTitle: document.querySelector("#resultsTitle"),
   resultList: document.querySelector("#resultList"),
   resultMeta: document.querySelector("#resultMeta"),
   pageInfo: document.querySelector("#pageInfo"),
@@ -39,11 +49,14 @@ const els = {
   sortMode: document.querySelector("#sortMode"),
   selectionSummary: document.querySelector("#selectionSummary"),
   themeButton: document.querySelector("#themeButton"),
+  viewButtons: document.querySelectorAll(".view-button"),
+  usageFilterBlock: document.querySelector("#usageFilterBlock"),
 };
 
 const numberFormat = new Intl.NumberFormat("ja-JP");
 const candidatesByNo = new Map(corpus.candidates.map((item) => [item.no, item]));
 const keitaiByName = new Map(corpus.keitai.map((item) => [item.keitai, item]));
+const usageByNo = new Map((corpus.usage_classes || []).map((item) => [item.no, item]));
 const resultsByCandidate = new Map();
 for (const row of corpus.results) {
   if (!resultsByCandidate.has(row.candidate_no)) {
@@ -59,6 +72,10 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function escapeRegExp(value) {
+  return String(value ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function normalize(value) {
@@ -90,6 +107,10 @@ function visibleKeitai() {
   });
 }
 
+function visibleUsageClasses() {
+  return usageClassItems({ applyQuery: true });
+}
+
 function candidateNumbersForKeitai(forms) {
   return corpus.candidates
     .filter((candidate) => forms.has(candidate.keitai))
@@ -97,6 +118,9 @@ function candidateNumbersForKeitai(forms) {
 }
 
 function selectedCandidateNumbers() {
+  if (state.mode === "usage") {
+    return corpus.candidates.map((candidate) => candidate.no);
+  }
   if (state.mode === "keitai") {
     const forms = state.selectedKeitai.size
       ? state.selectedKeitai
@@ -109,11 +133,56 @@ function selectedCandidateNumbers() {
   return visibleCandidates().map((candidate) => candidate.no);
 }
 
-function filteredResults() {
+function selectedUsageNumbers() {
+  if (state.selectedUsage.size) {
+    return [...state.selectedUsage].sort((a, b) => a - b);
+  }
+  if (state.mode !== "usage") return [];
+  return visibleUsageClasses().map((item) => item.no);
+}
+
+function baseRowsForCurrentScope() {
   const selected = new Set(selectedCandidateNumbers());
   let rows = corpus.results.filter((row) => selected.has(row.candidate_no));
   if (state.books.size) {
     rows = rows.filter((row) => state.books.has(row.work_id));
+  }
+  return rows;
+}
+
+function usageCountsForCurrentScope() {
+  const counts = new Map((corpus.usage_classes || []).map((item) => [item.no, 0]));
+  for (const row of baseRowsForCurrentScope()) {
+    const number = Number(row.usage_class_no);
+    counts.set(number, (counts.get(number) || 0) + 1);
+  }
+  return counts;
+}
+
+function usageClassItems({ applyQuery = false } = {}) {
+  const query = applyQuery ? normalize(state.query) : "";
+  const counts = usageCountsForCurrentScope();
+  return (corpus.usage_classes || [])
+    .map((item) => ({
+      ...item,
+      current_count: counts.get(item.no) || 0,
+    }))
+    .filter((item) => {
+      if (!query) return true;
+      return normalize([item.no, item.expression, item.class].join(" ")).includes(query);
+    })
+    .sort((a, b) => {
+      const aEmpty = a.current_count === 0 ? 1 : 0;
+      const bEmpty = b.current_count === 0 ? 1 : 0;
+      return aEmpty - bEmpty || b.current_count - a.current_count || a.no - b.no;
+    });
+}
+
+function filteredResults() {
+  let rows = baseRowsForCurrentScope();
+  if (state.mode === "usage" || state.selectedUsage.size) {
+    const usages = new Set(selectedUsageNumbers());
+    rows = rows.filter((row) => usages.has(Number(row.usage_class_no)));
   }
   rows = [...rows];
   rows.sort((a, b) => {
@@ -148,6 +217,20 @@ function renderBooks() {
   renderBookLabel();
 }
 
+function renderUsageFilter() {
+  els.usageFilterList.innerHTML = usageClassItems()
+    .map(
+      (usage) => `
+        <label class="book-filter-item usage-filter-item ${usage.current_count ? "" : "is-empty"}">
+          <input type="checkbox" data-usage-filter="${usage.no}" />
+          <span>${String(usage.no).padStart(2, "0")} · ${escapeHtml(usage.expression)} · ${escapeHtml(usage.class)} (${numberFormat.format(usage.current_count)})</span>
+        </label>
+      `,
+    )
+    .join("");
+  renderUsageLabel();
+}
+
 function renderBookLabel() {
   if (!state.books.size) {
     els.bookFilterLabel.textContent = "すべて";
@@ -163,9 +246,35 @@ function renderBookLabel() {
   els.bookFilterLabel.textContent = labels.join(", ");
 }
 
+function renderUsageLabel() {
+  if (!state.selectedUsage.size) {
+    els.usageFilterLabel.textContent = "すべて";
+    return;
+  }
+  const allUsages = corpus.usage_classes || [];
+  if (state.selectedUsage.size === allUsages.length) {
+    els.usageFilterLabel.textContent = "全用法";
+    return;
+  }
+  const labels = allUsages
+    .filter((usage) => state.selectedUsage.has(usage.no))
+    .map((usage) => usage.expression);
+  if (labels.length <= 2) {
+    els.usageFilterLabel.textContent = labels.join(", ");
+    return;
+  }
+  els.usageFilterLabel.textContent = `${labels.slice(0, 2).join(", ")} 他${labels.length - 2}`;
+}
+
 function syncBookChecks() {
   els.bookFilterList.querySelectorAll("input[data-book]").forEach((input) => {
     input.checked = state.books.has(input.dataset.book);
+  });
+}
+
+function syncUsageChecks() {
+  els.usageFilterList.querySelectorAll("input[data-usage-filter]").forEach((input) => {
+    input.checked = state.selectedUsage.has(Number(input.dataset.usageFilter));
   });
 }
 
@@ -174,13 +283,49 @@ function closeBookMenu() {
   els.bookFilterButton.setAttribute("aria-expanded", "false");
 }
 
+function closeUsageMenu() {
+  els.usageFilterMenu.hidden = true;
+  els.usageFilterButton.setAttribute("aria-expanded", "false");
+}
+
 function toggleBookMenu() {
   const nextHidden = !els.bookFilterMenu.hidden;
   els.bookFilterMenu.hidden = nextHidden;
   els.bookFilterButton.setAttribute("aria-expanded", String(!nextHidden));
 }
 
+function toggleUsageMenu() {
+  const nextHidden = !els.usageFilterMenu.hidden;
+  els.usageFilterMenu.hidden = nextHidden;
+  els.usageFilterButton.setAttribute("aria-expanded", String(!nextHidden));
+}
+
 function renderCandidates() {
+  if (state.mode === "usage") {
+    const usages = visibleUsageClasses();
+    els.searchLabel.textContent = "後接用法検索";
+    els.listLabel.textContent = "後接用法";
+    els.candidateSearch.placeholder = "例: する / 用言 / 形容詞";
+    els.candidateCount.textContent = `${usages.length} / ${(corpus.usage_classes || []).length}`;
+    els.candidateList.innerHTML = usages
+      .map((item) => {
+        const checked = state.selectedUsage.has(item.no) ? "checked" : "";
+        return `
+          <label class="usage-item">
+            <input type="checkbox" data-usage="${item.no}" ${checked} />
+            <span class="candidate-name">
+              <span class="candidate-no">${String(item.no).padStart(2, "0")}</span>
+              <span class="candidate-label">${escapeHtml(item.expression)}</span>
+              <span class="keitai-meta">${escapeHtml(item.class)}</span>
+            </span>
+            <span class="candidate-count">${numberFormat.format(item.current_count)}</span>
+          </label>
+        `;
+      })
+      .join("");
+    return;
+  }
+
   if (state.mode === "keitai") {
     const forms = visibleKeitai();
     els.searchLabel.textContent = "形態検索";
@@ -206,8 +351,8 @@ function renderCandidates() {
   }
 
   const candidates = visibleCandidates();
-  els.searchLabel.textContent = "候補語検索";
-  els.listLabel.textContent = "候補語";
+  els.searchLabel.textContent = "語彙項目検索";
+  els.listLabel.textContent = "対象語彙項目";
   els.candidateSearch.placeholder = "例: どきどき / しっかり";
   els.candidateCount.textContent = `${candidates.length} / ${corpus.candidates.length}`;
   els.candidateList.innerHTML = candidates
@@ -229,11 +374,18 @@ function renderCandidates() {
 
 function renderStats(rows) {
   const selected = selectedCandidateNumbers();
+  const targetCount =
+    state.mode === "usage" ? selectedUsageNumbers().length : selected.length;
   const books = new Set(rows.map((row) => row.work_id));
-  els.statCandidates.textContent = numberFormat.format(corpus.candidates.length);
-  els.statSelected.textContent = numberFormat.format(selected.length);
+  const forms = new Set(
+    selected
+      .map((number) => candidatesByNo.get(number)?.keitai)
+      .filter(Boolean),
+  );
+  els.statTargetItems.textContent = numberFormat.format(targetCount);
   els.statResults.textContent = numberFormat.format(rows.length);
   els.statBooks.textContent = numberFormat.format(books.size);
+  els.statKeitai.textContent = numberFormat.format(forms.size);
 }
 
 function surfaceSummary(candidate) {
@@ -245,18 +397,20 @@ function surfaceSummary(candidate) {
 }
 
 function renderSelectionSummary(rows) {
-  const selected = selectedCandidateNumbers()
-    .map((number) => candidatesByNo.get(number))
-    .filter(Boolean);
   const rowCounts = new Map();
   for (const row of rows) {
     rowCounts.set(row.candidate_no, (rowCounts.get(row.candidate_no) || 0) + 1);
   }
-  const selectedLabel = state.selected.size ? `${selected.length}語を選択中` : `${selected.length}語を表示対象`;
-  const modeLabel =
-    state.mode === "keitai" && state.selectedKeitai.size
-      ? `${state.selectedKeitai.size}形態を選択中`
-      : selectedLabel;
+  const selected =
+    state.mode === "usage"
+      ? [...rowCounts.keys()]
+          .sort((a, b) => a - b)
+          .map((number) => candidatesByNo.get(number))
+          .filter(Boolean)
+      : selectedCandidateNumbers()
+          .map((number) => candidatesByNo.get(number))
+          .filter(Boolean);
+  const modeLabel = "検索対象語彙項目";
   const chips = selected
     .map((candidate) => {
       const visibleCount = rowCounts.get(candidate.no) || 0;
@@ -270,10 +424,10 @@ function renderSelectionSummary(rows) {
     })
     .join("");
   els.selectionSummary.innerHTML = `
-    <div class="selection-panel">
+      <div class="selection-panel">
       <div class="selection-panel-head">
         <strong>${escapeHtml(modeLabel)}</strong>
-        <span class="muted">${numberFormat.format(rows.length)}件</span>
+        <span class="muted">${numberFormat.format(selected.length)}項目 / ${numberFormat.format(rows.length)}用例</span>
       </div>
       <div class="selected-chip-list">${chips}</div>
     </div>
@@ -286,10 +440,23 @@ function renderPager(rows) {
   els.prevPage.disabled = state.page <= 1;
   els.nextPage.disabled = state.page >= totalPages;
   els.pageInfo.textContent = `${state.page} / ${totalPages}`;
-  const selected = state.selected.size
-    ? `${state.selected.size}語を選択中`
-    : "表示中の候補語を対象";
-  els.resultMeta.textContent = `${selected} · ${numberFormat.format(rows.length)}件`;
+  const selected =
+    state.mode === "usage"
+      ? `${selectedUsageNumbers().length}分類を対象`
+      : `${selectedCandidateNumbers().length}項目を対象`;
+  els.resultMeta.textContent = `${selected} · ${numberFormat.format(rows.length)}用例`;
+}
+
+function tokenText(value) {
+  return String(value ?? "").replaceAll("|", " | ");
+}
+
+function highlightJapaneseText(text, key) {
+  const source = escapeHtml(text);
+  const target = String(key ?? "");
+  if (!target) return source;
+  const pattern = new RegExp(escapeRegExp(escapeHtml(target)), "g");
+  return source.replace(pattern, `<mark class="term-highlight">${escapeHtml(target)}</mark>`);
 }
 
 function resultCard(row) {
@@ -304,34 +471,44 @@ function resultCard(row) {
         </div>
         <div class="tags">
           <span class="tag">${escapeHtml(row.align_type)}</span>
+          <span class="tag tag-usage">${escapeHtml(row.usage_expression)}</span>
           ${score ? `<span class="tag">score ${score}</span>` : ""}
           ${note}
         </div>
       </div>
       <div class="kwic">
-        <span class="kwic-left">${escapeHtml(row.kwic_left)}</span>
+        <span class="kwic-left">${escapeHtml(tokenText(row.kwic_left))}</span>
         <span class="kwic-key">${escapeHtml(row.key)}</span>
-        <span class="kwic-right">${escapeHtml(row.kwic_right)}</span>
+        <span class="kwic-right">${escapeHtml(tokenText(row.kwic_right))}</span>
       </div>
       <div class="parallel">
         <div class="parallel-box">
           <span class="parallel-label">日本語</span>
-          <p class="parallel-text">${escapeHtml(row.ja_sentence)}</p>
+          <p class="parallel-text">${highlightJapaneseText(row.ja_sentence, row.key)}</p>
         </div>
         <div class="parallel-box">
           <span class="parallel-label">中国語訳</span>
           <p class="parallel-text">${escapeHtml(row.zh_translation)}</p>
         </div>
       </div>
-      <div class="token-meta">
-        <span>surface: ${escapeHtml(row.surface)}</span>
-        <span>lemma: ${escapeHtml(row.lemma)}</span>
-        <span>reading: ${escapeHtml(row.lemma_reading)}</span>
-        <span>品詞: ${escapeHtml(row.pos)}</span>
-        <span>語種: ${escapeHtml(row.goshu)}</span>
-        <span>token: ${escapeHtml(row.token_ids)}</span>
-      </div>
     </article>
+  `;
+}
+
+function kwicRow(row) {
+  return `
+    <tr>
+      <td class="kwic-context kwic-context-left">
+        <span>${escapeHtml(tokenText(row.kwic_left))}</span>
+      </td>
+      <td class="kwic-table-key">
+        <strong>${escapeHtml(row.key)}</strong>
+        <small>No.${row.candidate_no} · ${escapeHtml(row.usage_expression)} · ${escapeHtml(row.title_ja)}</small>
+      </td>
+      <td class="kwic-context">
+        <span>${escapeHtml(tokenText(row.kwic_right))}</span>
+      </td>
+    </tr>
   `;
 }
 
@@ -343,14 +520,36 @@ function renderResults(rows) {
     els.resultList.innerHTML = `<div class="empty">条件に合う結果はありません。</div>`;
     return;
   }
+  els.resultsTitle.textContent = state.view === "kwic" ? "KWIC一覧" : "対訳用例";
+  if (state.view === "kwic") {
+    els.resultList.innerHTML = `
+      <div class="kwic-table-wrap">
+        <table class="kwic-table">
+          <thead>
+            <tr>
+              <th>前文脈</th>
+              <th>キー</th>
+              <th>後文脈</th>
+            </tr>
+          </thead>
+          <tbody>${pageRows.map(kwicRow).join("")}</tbody>
+        </table>
+      </div>
+    `;
+    return;
+  }
   els.resultList.innerHTML = pageRows.map(resultCard).join("");
 }
 
 function render() {
+  els.usageFilterBlock.hidden = state.mode === "usage";
   const rows = filteredResults();
   renderCandidates();
   renderBookLabel();
   syncBookChecks();
+  renderUsageFilter();
+  renderUsageLabel();
+  syncUsageChecks();
   renderStats(rows);
   renderSelectionSummary(rows);
   renderResults(rows);
@@ -378,7 +577,28 @@ function initEvents() {
     });
   });
 
+  els.viewButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      els.viewButtons.forEach((item) => item.classList.remove("is-active"));
+      button.classList.add("is-active");
+      state.view = button.dataset.view || "parallel";
+      render();
+    });
+  });
+
   els.candidateList.addEventListener("change", (event) => {
+    const usageInput = event.target.closest("input[data-usage]");
+    if (usageInput) {
+      const number = Number(usageInput.dataset.usage);
+      if (usageInput.checked) {
+        state.selectedUsage.add(number);
+      } else {
+        state.selectedUsage.delete(number);
+      }
+      resetPageAndRender();
+      return;
+    }
+
     const keitaiInput = event.target.closest("input[data-keitai]");
     if (keitaiInput) {
       if (keitaiInput.checked) {
@@ -402,6 +622,13 @@ function initEvents() {
   });
 
   els.selectAllButton.addEventListener("click", () => {
+    if (state.mode === "usage") {
+      for (const item of visibleUsageClasses()) {
+        state.selectedUsage.add(item.no);
+      }
+      resetPageAndRender();
+      return;
+    }
     if (state.mode === "keitai") {
       for (const item of visibleKeitai()) {
         state.selectedKeitai.add(item.keitai);
@@ -416,7 +643,9 @@ function initEvents() {
   });
 
   els.clearButton.addEventListener("click", () => {
-    if (state.mode === "keitai") {
+    if (state.mode === "usage") {
+      state.selectedUsage.clear();
+    } else if (state.mode === "keitai") {
       state.selectedKeitai.clear();
     } else {
       state.selected.clear();
@@ -428,6 +657,10 @@ function initEvents() {
     toggleBookMenu();
   });
 
+  els.usageFilterButton.addEventListener("click", () => {
+    toggleUsageMenu();
+  });
+
   els.bookFilterList.addEventListener("change", (event) => {
     const input = event.target.closest("input[data-book]");
     if (!input) return;
@@ -435,6 +668,18 @@ function initEvents() {
       state.books.add(input.dataset.book);
     } else {
       state.books.delete(input.dataset.book);
+    }
+    resetPageAndRender();
+  });
+
+  els.usageFilterList.addEventListener("change", (event) => {
+    const input = event.target.closest("input[data-usage-filter]");
+    if (!input) return;
+    const number = Number(input.dataset.usageFilter);
+    if (input.checked) {
+      state.selectedUsage.add(number);
+    } else {
+      state.selectedUsage.delete(number);
     }
     resetPageAndRender();
   });
@@ -449,9 +694,22 @@ function initEvents() {
     resetPageAndRender();
   });
 
+  els.usageSelectAllButton.addEventListener("click", () => {
+    state.selectedUsage = new Set((corpus.usage_classes || []).map((usage) => usage.no));
+    resetPageAndRender();
+  });
+
+  els.usageClearButton.addEventListener("click", () => {
+    state.selectedUsage.clear();
+    resetPageAndRender();
+  });
+
   document.addEventListener("click", (event) => {
     if (!els.bookMultiSelect.contains(event.target)) {
       closeBookMenu();
+    }
+    if (!els.usageMultiSelect.contains(event.target)) {
+      closeUsageMenu();
     }
   });
 
@@ -491,6 +749,7 @@ function initTheme() {
 function init() {
   initTheme();
   renderBooks();
+  renderUsageFilter();
   initEvents();
   render();
 }

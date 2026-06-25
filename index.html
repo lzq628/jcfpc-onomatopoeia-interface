@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>日中小説オノマトペ対訳コーパス</title>
+    <title>日中小説オノマトペ対照分析検索インターフェース</title>
     <meta
       name="description"
-      content="200語の日本語オノマトペ候補を対象にした日中小説対訳KWICコーパス"
+      content="JCFPCに基づく日本語オノマトペ200語の対照分析検索インターフェース"
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -14,8 +14,8 @@
     <div class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Japanese-Chinese Parallel Corpus</p>
-          <h1>日中小説オノマトペ対訳コーパス</h1>
+          <p class="eyebrow">Based on JCFPC: Japanese-Chinese Fiction Parallel Corpus</p>
+          <h1>日中小説オノマトペ対照分析検索インターフェース</h1>
         </div>
         <div class="topbar-actions">
           <button class="icon-button" id="themeButton" type="button" title="表示テーマを切り替え">
@@ -25,17 +25,18 @@
       </header>
 
       <main class="layout">
-        <aside class="sidebar" aria-label="候補語フィルター">
+        <aside class="sidebar" aria-label="対象語彙項目フィルター">
           <section class="control-block">
             <span class="label">検索対象</span>
             <div class="mode-toggle" role="group" aria-label="検索対象">
-              <button class="mode-button is-active" data-mode="word" type="button">候補語</button>
+              <button class="mode-button is-active" data-mode="word" type="button">語彙項目</button>
               <button class="mode-button" data-mode="keitai" type="button">形態</button>
+              <button class="mode-button" data-mode="usage" type="button">後接用法</button>
             </div>
           </section>
 
-          <section class="control-block">
-            <label class="label" id="searchLabel" for="candidateSearch">候補語検索</label>
+          <section class="control-block" id="usageFilterBlock">
+            <label class="label" id="searchLabel" for="candidateSearch">語彙項目検索</label>
             <input
               id="candidateSearch"
               class="search-input"
@@ -46,7 +47,7 @@
           </section>
 
           <section class="control-grid">
-            <button class="small-button" id="selectAllButton" type="button">表示項目を選択</button>
+            <button class="small-button" id="selectAllButton" type="button">表示中の項目を選択</button>
             <button class="small-button" id="clearButton" type="button">解除</button>
           </section>
 
@@ -73,9 +74,32 @@
             </div>
           </section>
 
+          <section class="control-block">
+            <label class="label" for="usageFilterButton">後接用法フィルター</label>
+            <div class="multi-select" id="usageMultiSelect">
+              <button
+                class="select multi-select-button"
+                id="usageFilterButton"
+                type="button"
+                aria-expanded="false"
+                aria-controls="usageFilterMenu"
+              >
+                <span id="usageFilterLabel">すべて</span>
+                <span aria-hidden="true">⌄</span>
+              </button>
+              <div class="multi-select-menu" id="usageFilterMenu" hidden>
+                <div class="book-menu-actions">
+                  <button class="small-button" id="usageSelectAllButton" type="button">全用法</button>
+                  <button class="small-button" id="usageClearButton" type="button">解除</button>
+                </div>
+                <div id="usageFilterList" class="book-filter-list"></div>
+              </div>
+            </div>
+          </section>
+
           <section class="control-block candidate-block">
             <div class="label-row">
-              <span class="label" id="listLabel">候補語</span>
+              <span class="label" id="listLabel">対象語彙項目</span>
               <span id="candidateCount" class="muted"></span>
             </div>
             <div id="candidateList" class="candidate-list"></div>
@@ -85,20 +109,20 @@
         <section class="content">
           <section class="stats-grid" aria-label="概要統計">
             <article class="stat">
-              <span class="stat-label">候補語</span>
-              <strong id="statCandidates">0</strong>
+              <span class="stat-label">対象項目</span>
+              <strong id="statTargetItems">0</strong>
             </article>
             <article class="stat">
-              <span class="stat-label">選択語</span>
-              <strong id="statSelected">0</strong>
-            </article>
-            <article class="stat">
-              <span class="stat-label">表示例</span>
+              <span class="stat-label">用例数</span>
               <strong id="statResults">0</strong>
             </article>
             <article class="stat">
               <span class="stat-label">作品数</span>
               <strong id="statBooks">0</strong>
+            </article>
+            <article class="stat">
+              <span class="stat-label">形態分類</span>
+              <strong id="statKeitai">0</strong>
             </article>
           </section>
 
@@ -106,7 +130,7 @@
             <label class="sort-label">
               並び順
               <select id="sortMode" class="select select-compact">
-                <option value="candidate">候補語順</option>
+                <option value="candidate">重要度順</option>
                 <option value="book">作品順</option>
               </select>
             </label>
@@ -116,13 +140,19 @@
 
           <section class="results-head">
             <div>
-              <h2>検索結果</h2>
+              <h2 id="resultsTitle">対訳用例</h2>
               <p id="resultMeta" class="muted"></p>
             </div>
-            <div class="pager">
-              <button class="icon-button" id="prevPage" type="button" title="前へ">‹</button>
-              <span id="pageInfo"></span>
-              <button class="icon-button" id="nextPage" type="button" title="次へ">›</button>
+            <div class="results-controls">
+              <div class="view-toggle" role="group" aria-label="表示形式">
+                <button class="view-button" data-view="kwic" type="button">KWIC一覧</button>
+                <button class="view-button is-active" data-view="parallel" type="button">対訳用例</button>
+              </div>
+              <div class="pager">
+                <button class="icon-button" id="prevPage" type="button" title="前へ">‹</button>
+                <span id="pageInfo"></span>
+                <button class="icon-button" id="nextPage" type="button" title="次へ">›</button>
+              </div>
             </div>
           </section>
 
@@ -131,7 +161,7 @@
       </main>
     </div>
 
-    <script src="data/onomatopoeia_data.js"></script>
-    <script src="app.js"></script>
+    <script src="data/onomatopoeia_data.js?v=20260625"></script>
+    <script src="app.js?v=20260625"></script>
   </body>
 </html>
