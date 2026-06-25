@@ -8,7 +8,7 @@
       name="description"
       content="JCFPCに基づく日本語オノマトペ200語の対照分析検索インターフェース"
     />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260625d" />
   </head>
   <body>
     <div class="app-shell">
@@ -159,9 +159,16 @@
           <section id="resultList" class="result-list" aria-live="polite"></section>
         </section>
       </main>
+
+      <footer class="site-footer">
+        <p>
+          本インターフェースは、JCFPC（Japanese-Chinese Fiction Parallel Corpus, ongoing）に基づく日中小説オノマトペ対照分析のための研究プロトタイプです。
+        </p>
+        <p>開発：廉沢奇（LIAN ZEQI, 神戸大学）｜2026年</p>
+      </footer>
     </div>
 
-    <script src="data/onomatopoeia_data.js?v=20260625"></script>
-    <script src="app.js?v=20260625"></script>
+    <script src="data/onomatopoeia_data.js?v=20260625d"></script>
+    <script src="app.js?v=20260625d"></script>
   </body>
 </html>

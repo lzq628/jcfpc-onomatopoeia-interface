@@ -44,6 +44,21 @@ body {
   letter-spacing: 0;
 }
 
+.boot-error {
+  border-bottom: 1px solid rgba(180, 83, 9, 0.28);
+  background: #fff7ed;
+  color: #92400e;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 10px 18px;
+}
+
+[data-theme="dark"] .boot-error {
+  background: rgba(180, 83, 9, 0.18);
+  border-bottom-color: rgba(251, 191, 36, 0.24);
+  color: #fed7aa;
+}
+
 button,
 input,
 select {
@@ -593,6 +608,24 @@ a:focus-visible {
   overflow: hidden;
 }
 
+.site-footer {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 18px;
+  margin-top: 10px;
+  padding: 9px 2px 0;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.site-footer p {
+  margin: 0;
+}
+
 .result-card {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -775,6 +808,7 @@ a:focus-visible {
 .parallel-text {
   line-height: 1.65;
   overflow-wrap: anywhere;
+  white-space: pre-line;
 }
 
 .empty {
@@ -886,6 +920,15 @@ a:focus-visible {
   .sidebar {
     padding: 10px;
     gap: 10px;
+  }
+
+  .site-footer {
+    display: block;
+    font-size: 0.74rem;
+  }
+
+  .site-footer p + p {
+    margin-top: 3px;
   }
 
   .control-grid {

@@ -1,5 +1,22 @@
 const corpus = window.ONOMATOPOEIA_CORPUS;
 
+function showBootError(message) {
+  const shell = document.querySelector(".app-shell") || document.body;
+  const error = document.createElement("div");
+  error.className = "boot-error";
+  error.textContent = message;
+  shell.prepend(error);
+}
+
+if (!corpus) {
+  showBootError("データファイルを読み込めません。data/onomatopoeia_data.js の配置を確認してください。");
+  throw new Error("ONOMATOPOEIA_CORPUS is missing");
+}
+
+if (!Array.isArray(corpus.usage_classes) || !corpus.usage_classes.length) {
+  showBootError("後接用法データが空です。古い data/onomatopoeia_data.js が読み込まれている可能性があります。");
+}
+
 const state = {
   mode: "word",
   query: "",
@@ -462,6 +479,8 @@ function highlightJapaneseText(text, key) {
 function resultCard(row) {
   const score = row.align_score == null ? "" : Number(row.align_score).toFixed(3);
   const note = row.review_note ? `<span class="tag tag-accent">${escapeHtml(row.review_note)}</span>` : "";
+  const jaText = row.ja_aligned_text || row.ja_sentence;
+  const zhText = row.zh_aligned_text || row.zh_translation;
   return `
     <article class="result-card">
       <div class="result-top">
@@ -484,11 +503,11 @@ function resultCard(row) {
       <div class="parallel">
         <div class="parallel-box">
           <span class="parallel-label">日本語</span>
-          <p class="parallel-text">${highlightJapaneseText(row.ja_sentence, row.key)}</p>
+          <p class="parallel-text">${highlightJapaneseText(jaText, row.key)}</p>
         </div>
         <div class="parallel-box">
           <span class="parallel-label">中国語訳</span>
-          <p class="parallel-text">${escapeHtml(row.zh_translation)}</p>
+          <p class="parallel-text">${escapeHtml(zhText)}</p>
         </div>
       </div>
     </article>
