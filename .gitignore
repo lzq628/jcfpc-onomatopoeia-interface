@@ -1,0 +1,30 @@
+# Keep this repository focused on the public static interface.
+
+# Internal notes and build inputs
+stt.txt
+scripts/
+data/*
+!data/
+!data/onomatopoeia_data.js
+
+# Generated or local data artifacts
+*.csv
+*.tsv
+*.xlsx
+*.xlsm
+*.db
+*.sqlite
+*.tgz
+*.zip
+*.log
+
+# Python/cache/editor/system files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
