@@ -28,9 +28,11 @@ const state = {
   view: "parallel",
   page: 1,
   pageSize: 24,
+  resultFocusPreference: "",
 };
 
 const els = {
+  appShell: document.querySelector(".app-shell"),
   modeButtons: document.querySelectorAll(".mode-button"),
   searchLabel: document.querySelector("#searchLabel"),
   listLabel: document.querySelector("#listLabel"),
@@ -66,6 +68,7 @@ const els = {
   sortMode: document.querySelector("#sortMode"),
   selectionSummary: document.querySelector("#selectionSummary"),
   themeButton: document.querySelector("#themeButton"),
+  focusResultsButton: document.querySelector("#focusResultsButton"),
   viewButtons: document.querySelectorAll(".view-button"),
   usageFilterBlock: document.querySelector("#usageFilterBlock"),
 };
@@ -505,7 +508,7 @@ function resultCard(row) {
           <span class="parallel-label">日本語</span>
           <p class="parallel-text">${highlightJapaneseText(jaText, row.key)}</p>
         </div>
-        <div class="parallel-box">
+        <div class="parallel-box parallel-box-zh" lang="zh-Hans">
           <span class="parallel-label">中国語訳</span>
           <p class="parallel-text">${escapeHtml(zhText)}</p>
         </div>
@@ -751,11 +754,38 @@ function initEvents() {
     els.resultList.scrollTo({ top: 0, behavior: "smooth" });
   });
 
+  els.focusResultsButton.addEventListener("click", () => {
+    state.resultFocusPreference = wantsFocusedResults() ? "overview" : "focus";
+    applyResultFocusMode();
+  });
+
+  window.addEventListener("resize", () => {
+    state.resultFocusPreference = "";
+    applyResultFocusMode();
+  });
+
   els.themeButton.addEventListener("click", () => {
     const next = document.documentElement.dataset.theme === "dark" ? "" : "dark";
     document.documentElement.dataset.theme = next;
     localStorage.setItem("onomatopoeia-theme", next);
   });
+}
+
+function isLowResultViewport() {
+  return window.innerWidth >= 981 && window.innerHeight <= 1100;
+}
+
+function wantsFocusedResults() {
+  if (state.resultFocusPreference === "focus") return true;
+  if (state.resultFocusPreference === "overview") return false;
+  return isLowResultViewport();
+}
+
+function applyResultFocusMode() {
+  const focused = wantsFocusedResults();
+  els.appShell.classList.toggle("is-results-focused", focused);
+  els.focusResultsButton.textContent = focused ? "概要を表示" : "結果を広く";
+  els.focusResultsButton.setAttribute("aria-pressed", String(focused));
 }
 
 function initTheme() {
@@ -770,7 +800,15 @@ function init() {
   renderBooks();
   renderUsageFilter();
   initEvents();
+  applyResultFocusMode();
   render();
 }
 
 init();
+
+
+
+
+
+
+

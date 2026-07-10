@@ -44,6 +44,13 @@ body {
   letter-spacing: 0;
 }
 
+.parallel-box-zh,
+[lang="zh-Hans"] {
+  font-family:
+    "Microsoft YaHei", "PingFang SC", "Noto Sans SC", "Source Han Sans SC",
+    "Microsoft JhengHei", Arial, sans-serif;
+}
+
 .boot-error {
   border-bottom: 1px solid rgba(180, 83, 9, 0.28);
   background: #fff7ed;
@@ -120,6 +127,37 @@ h3 {
 .topbar-actions {
   display: flex;
   gap: 8px;
+}
+
+.app-shell.is-results-focused {
+  padding-top: 12px;
+  padding-bottom: 10px;
+}
+
+.app-shell.is-results-focused .topbar {
+  padding-bottom: 8px;
+}
+
+.app-shell.is-results-focused .eyebrow {
+  font-size: 0.72rem;
+}
+
+.app-shell.is-results-focused h1 {
+  font-size: clamp(1.35rem, 2.2vw, 1.65rem);
+}
+
+.app-shell.is-results-focused .stats-grid,
+.app-shell.is-results-focused .selection-summary {
+  display: none;
+}
+
+.app-shell.is-results-focused .toolbar,
+.app-shell.is-results-focused .results-head {
+  margin-bottom: 8px;
+}
+
+.app-shell.is-results-focused .site-footer {
+  display: none;
 }
 
 .layout {
@@ -465,6 +503,10 @@ a:focus-visible {
 
 .toolbar {
   justify-content: flex-end;
+}
+
+.focus-button {
+  min-width: 104px;
 }
 
 .results-controls {
@@ -960,3 +1002,4 @@ a:focus-visible {
   }
 
 }
+

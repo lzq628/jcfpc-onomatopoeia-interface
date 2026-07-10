@@ -8,7 +8,7 @@
       name="description"
       content="JCFPCに基づく日本語オノマトペ200語の対照分析検索インターフェース"
     />
-    <link rel="stylesheet" href="styles.css?v=20260625d" />
+    <link rel="stylesheet" href="styles.css?v=20260710c" />
   </head>
   <body>
     <div class="app-shell">
@@ -127,6 +127,9 @@
           </section>
 
           <section class="toolbar">
+            <button class="small-button focus-button" id="focusResultsButton" type="button" aria-pressed="false">
+              結果を広く
+            </button>
             <label class="sort-label">
               並び順
               <select id="sortMode" class="select select-compact">
@@ -168,7 +171,10 @@
       </footer>
     </div>
 
-    <script src="data/onomatopoeia_data.js?v=20260625d"></script>
-    <script src="app.js?v=20260625d"></script>
+    <script src="data/onomatopoeia_data.js?v=20260710c"></script>
+    <script src="app.js?v=20260710c"></script>
   </body>
 </html>
+
+
+
