@@ -1,6 +1,6 @@
 # 日中小説オノマトペ対照分析検索インターフェース
 
-**▶ デモページ：https://lzq628.github.io/jcfpc-onomatopoeia-interface/**（スマートフォン対応）
+**▶ デモページ：[https://lzq628.github.io/jcfpc-onomatopoeia-interface/](https://lzq628.github.io/jcfpc-onomatopoeia-interface/ )**（スマートフォン対応）
 
 JCFPC（Japanese-Chinese Fiction Parallel Corpus, ongoing）に基づく、日中小説オノマトペ対照分析のための研究プロトタイプです。
 
